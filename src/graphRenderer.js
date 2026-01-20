@@ -1,4 +1,4 @@
-import { createCanvas } from "canvas";
+const { createCanvas, GlobalFonts } = require("@napi-rs/canvas");
 
 const DEFAULT_CONFIG = {
   size: {
@@ -39,6 +39,8 @@ const DEFAULT_CONFIG = {
   },
   generateMockData: false,
 };
+
+GlobalFonts.registerFromPath(`${__dirname}/../resources/AppleColorEmoji.ttf`, 'Emoji');
 
 const rateChars = ['⇒','⇗', '⇑','⇑⇑', '⇘',  '⇓', '⇓⇓', '⇒', '⇒'];
 const rateColors = ['green', 'yellow', 'orange', 'red', 'yellow', 'orange', 'red', 'green', 'green'];
@@ -93,7 +95,7 @@ function renderHeader(ctx, header, config, dataPoints, now = Date.now()) {
   // Render last value
   ctx.fillStyle = last.value > config.range.goodMax ? "red" :
                   last.value < config.range.goodMin ? "purple" : "green";
-  ctx.font = "60px sans-serif";
+  ctx.font = "60px sans-serif Emoji";
   ctx.textAlign = "left";
 
   const text = `${rateChars[last.rate]}${last.value.toFixed(0)}`;
@@ -106,9 +108,9 @@ function renderHeader(ctx, header, config, dataPoints, now = Date.now()) {
   // Render unit label
   const valueWidth = ctx.measureText(text).width;
   ctx.fillStyle = "white";
-  ctx.font = "12px sans-serif";
+  ctx.font = "12px sans-serif Emoji";
   ctx.fillText(
-    "mg/dL",
+    "mg/dL 🍆",
     header.x + valueWidth + config.padding.left,
     header.y + 60
   );
@@ -116,7 +118,6 @@ function renderHeader(ctx, header, config, dataPoints, now = Date.now()) {
   // Render time ago
   const minutesAgo = Math.floor((now - last.timestamp) / 60000);
   ctx.fillStyle = minutesAgo > 5 ? "orange" : "cyan";
-  ctx.font = "12px sans-serif";
   ctx.fillText(
     `🕒 ${minutesAgo}'​`,
     header.x + valueWidth + config.padding.left,
@@ -132,7 +133,7 @@ function renderGraph(ctx, graph, plot, config, dataPoints, now = Date.now()) {
 
   // Draw span box
   const fontsize = 16;
-  ctx.font = `${fontsize}px sans-serif`;
+  ctx.font = `${fontsize}px sans-serif Emoji`;
   const text = `${config.time.shownSpanHours}h`;
 
   const spanPadding = 3;
@@ -325,4 +326,4 @@ function renderImage(dataPoints = [], userConfig = {}) {
   return canvas.toBuffer("image/jpeg");
 }
 
-export { renderImage, DEFAULT_CONFIG };
+module.exports = { renderImage, DEFAULT_CONFIG };

@@ -1,10 +1,58 @@
 {
+  "name": "glucoservice",
+  "version": "1.0.0",
+  "description": "An Electron application for glucose monitoring and management.",
+  "homepage": "https://github.com/santiagobustos451/glucose-monitor#readme",
+  "bugs": {
+    "url": "https://github.com/santiagobustos451/glucose-monitor/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santiagobustos451/glucose-monitor.git"
+  },
+  "license": "ISC",
+  "author": "Penrose <penrose@example.com>",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.88",
     "axios": "^1.13.2",
-    "canvas": "^3.2.0",
     "dotenv": "^17.2.3",
+    "electron-squirrel-startup": "^1.0.1",
     "form-data": "^4.0.5",
     "sharp": "^0.34.5"
   },
-  "type": "module"
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/maker-deb": "^7.11.1",
+    "@electron-forge/maker-rpm": "^7.11.1",
+    "@electron-forge/maker-squirrel": "^7.11.1",
+    "@electron-forge/maker-zip": "^7.11.1",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.1",
+    "@electron-forge/plugin-fuses": "^7.11.1",
+    "@electron/fuses": "^1.8.0",
+    "electron": "^40.0.0"
+  },
+  "build": {
+    "appId": "com.yourname.glucoservice",
+    "name": "GlucoseService",
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true
+    }
+  }
 }

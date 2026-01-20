@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div class="header">
+        <div class="title">Glumon v0.1</div>
+        <div class="actions">
+            <div>Next refresh in <span id="refresh-countdown">10</span>s</div>
+            <button onclick="load()">🔄</button>
+            <button onclick="toggleModal()">⚙️</button>
+        </div>
+    </div>
+    <div class="modal-container closed">
+        <div class="modal-window">
+            <div class="modal-header">
+                <div class="title">Settings</div>
+                <div class="actions">
+                    <button onclick="toggleModal()">❌</button>
+                </div>
+            </div>
+            <div class="form">
+                <div class="form-setting">
+                    <div class="title">Target Range</div>
+                    <div class="form-field">
+                        <label for="min-target">Min:</label>
+                        <select onchange="sendSettings()" id="min-target">
+                            <option value="60">60</option>
+                            <option value="70">70</option>
+                            <option value="80">80</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="max-target">Max:</label>
+                        <select onchange="sendSettings()" id="max-target">
+                            <option value="180">180</option>
+                            <option value="200">200</option>
+                            <option value="240">240</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-setting">
+                    <div class="title">Graph Span</div>
+                    <div class="form-field">
+                        <label for="span-setting">Hours:</label>
+                        <select onchange="sendSettings()" id="span-setting">
+                            <option value="3">3</option>
+                            <option value="6">6</option>
+                            <option value="12">12</option>
+                            <option value="24">24</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="content" id="content">
+        <div id="glucose">Loading...</div>
+    </div>
+
+    <script>
+        const REFRESH_INTERVAL = 10; // seconds
+
+        let refreshTimer = null;
+        let nextRefreshAt = null;
+        let currentConfig = {};
+
+        const contentBox = document.getElementById('content');
+        const spanSetting = document.getElementById('span-setting');
+        const minTarget = document.getElementById('min-target');
+        const maxTarget = document.getElementById('max-target');
+
+        const countdownEl = document.getElementById('refresh-countdown');
+        const glucoseEl = document.getElementById('glucose');
+
+        function updateCountdown() {
+            if (!nextRefreshAt) return;
+
+            const remainingMs = nextRefreshAt - Date.now();
+            const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
+
+            countdownEl.textContent = remainingSec;
+
+            if (remainingSec <= 0) {
+                triggerAutoRefresh();
+            }
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                contentBox.classList.add('loading');
+            } else {
+                contentBox.classList.remove('loading');
+            }
+        }
+
+        async function load(config = {}) {
+            setLoading(true);
+            stopCountdown();
+
+            currentConfig = {
+                ...currentConfig,
+                ...config,
+            };
+            const res = await window.api.refreshScreen(currentConfig);
+
+            const spanOption = Array.from(spanSetting.options).find(option => option.value == res.config.spanHours);
+            if (spanOption) {
+                spanSetting.value = spanOption.value;
+            }
+            minTarget.value = res.config.bsLimits.low;
+            maxTarget.value = res.config.bsLimits.high;
+            glucoseEl.innerHTML = `${res.data[res.data.length - 1].value} mg/dL (${getMinutesAgo(res.data[res.data.length - 1].timestamp)} min ago)`;
+
+            setLoading(false);
+            startCountdown();
+        }
+
+        function getMinutesAgo(timestamp) {
+            const now = Date.now();
+            return Math.round((now - timestamp) / 60000);
+        }
+
+        function sendSettings() {
+            const newConfig = {
+                spanHours: parseInt(spanSetting.value),
+                bsLimits: {
+                    low: parseInt(minTarget.value),
+                    high: parseInt(maxTarget.value)
+                }
+            };
+            console.log('Sending new config:', newConfig);
+            load(newConfig);
+        }
+
+        async function triggerAutoRefresh() {
+            stopCountdown(); // prevent double fire
+            await load(currentConfig);
+            startCountdown(); // schedule next
+        }
+
+        function startCountdown() {
+            nextRefreshAt = Date.now() + REFRESH_INTERVAL * 1000;
+
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(updateCountdown, 250);
+        }
+
+        function stopCountdown() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            }
+            nextRefreshAt = null;
+        }
+
+        function toggleModal() {
+            const modal = document.querySelector('.modal-container');
+            modal.classList.toggle('closed');
+        }
+
+        load();
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #444;
+            color: #eee;
+        }
+
+        body .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        body .header .title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        body .header .actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        body .content {
+            background-color: #222;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        body .content.loading {
+            font-style: italic;
+            pointer-events: none;
+        }
+
+        body .content.loading *{
+            filter: blur(2px);
+        }
+
+        .modal-container {
+            display: block;
+            position: absolute;
+            z-index: 10;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-container.closed {
+            display: none;
+        }
+        
+        .modal-window {
+            width: 75%;
+            height: 75%;
+            background-color: #222;
+            position: absolute;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            color: #eee;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #555;
+            color: #eee;
+            border: none;
+            padding: 2px 2px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-setting {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .form-setting .title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .form-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-field label {
+            font-size: 14px;
+        }
+
+        .form-field input,
+        .form-field select {
+            background-color: #333;
+            color: #eee;
+            border: 1px solid #555;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus {
+            outline: none;
+            border-color: #888;
+        }
+    </style>
+</body>
+</html>
