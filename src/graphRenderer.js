@@ -5,6 +5,7 @@ const DEFAULT_CONFIG = {
     width: 240,
     height: 240,
     headerHeight: 90,
+    trendWidth: 40,
   },
   margin: {
     top: 5,
@@ -34,16 +35,117 @@ const DEFAULT_CONFIG = {
     goodRange: "rgba(0, 255, 0, 0.2)",
     grid: "rgba(255, 255, 255, 0.2)",
     line: "white",
-    font: "10px sans-serif",
+    font: "10px Sans, Emoji",
     textColor: "white",
   },
   generateMockData: false,
 };
 
-GlobalFonts.registerFromPath(`${__dirname}/../resources/AppleColorEmoji.ttf`, 'Emoji');
+GlobalFonts.registerFromPath(`${__dirname}/../resources/NotoEmoji.ttf`, 'Emoji');
+GlobalFonts.registerFromPath(`${__dirname}/../resources/NotoSans.ttf`, 'Sans');
 
-const rateChars = ['⇒','⇗', '⇑','⇑⇑', '⇘',  '⇓', '⇓⇓', '⇒', '⇒'];
+const rateChars = ['➡️','↗️', '⬆️','⬆⬆', '↘️',  '⬇️', '⬇⬇', '➡️', '➡️'];
 const rateColors = ['green', 'yellow', 'orange', 'red', 'yellow', 'orange', 'red', 'green', 'green'];
+const rateDirections = ['right', 'diagUp', 'up', 'doubleUp', 'diagDown', 'down', 'doubleDown', 'right', 'right'];
+
+function lineInDirection(x, y, length, angleInRadians) {
+  return {
+    x: x + length * Math.cos(angleInRadians),
+    y: y + length * Math.sin(angleInRadians),
+  };
+}
+
+function drawRateArrow(ctx, x, y, size, direction) {
+
+  ctx.lineWidth = 3;
+  const tipLength = size / 3;
+
+  ctx.strokeStyle = `${rateColors[rateDirections.indexOf(direction)]}`;
+
+  switch (direction) {
+    case "up":
+      ctx.moveTo(x, y + size / 2);
+      ctx.lineTo(x, y - size / 2);
+      ctx.stroke();
+      ctx.moveTo(x - size / 6, y - size / 3);
+      ctx.lineTo(x, y - size / 2);
+      ctx.lineTo(x + size / 6, y - size / 3);
+      ctx.stroke();
+      break;
+    case "down":
+      ctx.moveTo(x, y + size / 2);
+      ctx.lineTo(x, y - size / 2);
+      ctx.stroke();
+      ctx.moveTo(x - size / 6, y + size / 3);
+      ctx.lineTo(x, y + size / 2);
+      ctx.lineTo(x + size / 6, y + size / 3);
+      ctx.stroke();
+      break;
+    case "right":
+      ctx.moveTo(x - size / 2, y);
+      ctx.lineTo(x + size / 2, y);
+      ctx.stroke();
+      ctx.moveTo(x + size / 3, y - size / 6);
+      ctx.lineTo(x + size / 2, y);
+      ctx.lineTo(x + size / 3, y + size / 6);
+      ctx.stroke();
+      break;
+    case "diagUp":
+      const tip = {x: x + (size / Math.SQRT2) / 2, y: y - (size / Math.SQRT2) / 2};
+
+      ctx.moveTo(x - (size / Math.SQRT2) / 2, y + (size / Math.SQRT2) / 2);
+      ctx.lineTo(tip.x, tip.y);
+      ctx.stroke();
+      const {x: tipX1, y: tipY1} = lineInDirection(tip.x, tip.y, tipLength, Math.PI);
+      
+      
+      ctx.moveTo(tipX1, tipY1);
+      ctx.lineTo(tip.x, tip.y);
+
+      const {x: tipX2, y: tipY2} = lineInDirection(tip.x, tip.y, tipLength, Math.PI / 2);
+      ctx.lineTo(tipX2, tipY2);
+      ctx.stroke();
+
+      break;
+    case "diagDown":
+      const tipD = {x: x + (size / Math.SQRT2) / 2, y: y + (size / Math.SQRT2) / 2};
+      ctx.moveTo(x - (size / Math.SQRT2) / 2, y - (size / Math.SQRT2) / 2);
+      ctx.lineTo(tipD.x, tipD.y);
+      ctx.stroke();
+      const {x: tipDX1, y: tipDY1} = lineInDirection(tipD.x, tipD.y, tipLength, -Math.PI);
+      ctx.moveTo(tipDX1, tipDY1);
+      ctx.lineTo(tipD.x, tipD.y);
+
+      const {x: tipDX2, y: tipDY2} = lineInDirection(tipD.x, tipD.y, tipLength, -Math.PI / 2);
+      ctx.lineTo(tipDX2, tipDY2);
+      ctx.stroke();
+      
+      break;
+    case "doubleUp":
+      drawRateArrow(ctx, x - size / 4, y + size / 4, size, "up");
+      drawRateArrow(ctx, x + size / 4, y + size / 4, size, "up");
+      break;
+    case "doubleDown":
+      drawRateArrow(ctx, x - size / 4, y - size / 4, size, "down");
+      drawRateArrow(ctx, x + size / 4, y - size / 4, size, "down");
+      break;
+    default:
+      ctx.moveTo(x, y + size / 2);
+      ctx.lineTo(x, y - size / 2);
+      ctx.stroke();
+      break;
+  }
+}
+
+function debugX(ctx, x, y) {
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+      ctx.moveTo(x - 10, y - 10);
+      ctx.lineTo(x + 10, y + 10);
+      ctx.moveTo(x + 10, y - 10);
+      ctx.lineTo(x - 10, y + 10); 
+  ctx.stroke();
+}
 
 function mergeConfig(userConfig = {}) {
   return {
@@ -95,22 +197,25 @@ function renderHeader(ctx, header, config, dataPoints, now = Date.now()) {
   // Render last value
   ctx.fillStyle = last.value > config.range.goodMax ? "red" :
                   last.value < config.range.goodMin ? "purple" : "green";
-  ctx.font = "60px sans-serif Emoji";
+  ctx.font = "60px Sans, Emoji";
   ctx.textAlign = "left";
 
-  const text = `${rateChars[last.rate]}${last.value.toFixed(0)}`;
+  const text = `${last.value.toFixed(0)}`;
   ctx.fillText(
     text,
     header.x,
     header.y + 60
   );
 
+  // Render rate arrow
+  drawRateArrow(ctx, 35, 45, 30,rateDirections[last.rate]);
+
   // Render unit label
   const valueWidth = ctx.measureText(text).width;
   ctx.fillStyle = "white";
-  ctx.font = "12px sans-serif Emoji";
+  ctx.font = "12px Sans, Emoji";
   ctx.fillText(
-    "mg/dL 🍆",
+    "mg/dL",
     header.x + valueWidth + config.padding.left,
     header.y + 60
   );
@@ -133,7 +238,7 @@ function renderGraph(ctx, graph, plot, config, dataPoints, now = Date.now()) {
 
   // Draw span box
   const fontsize = 16;
-  ctx.font = `${fontsize}px sans-serif Emoji`;
+  ctx.font = `${fontsize}px Sans, Emoji`;
   const text = `${config.time.shownSpanHours}h`;
 
   const spanPadding = 3;
@@ -293,7 +398,7 @@ function renderImage(dataPoints = [], userConfig = {}) {
   };
 
   const header = {
-    x: content.x,
+    x: content.x + config.size.trendWidth,
     y: content.y,
     width: content.width,
     height: config.size.headerHeight,
